@@ -614,7 +614,7 @@ pub struct CollectProtocolFee<'info> {
     pub admin: Signer<'info>,
 
     #[account(constraint = admin.key() == amm_config.admin_key @ ApexFlowError::UnauthorizedAdmin)]
-    pub amm_config: Account<'info, AmmConfig>,
+    pub amm_config: Box<Account<'info, AmmConfig>>,
 
     #[account(constraint = mint_a.key() == pool_state.mint_a @ ApexFlowError::InvalidMint)]
     pub mint_a: Account<'info, Mint>,
@@ -623,7 +623,7 @@ pub struct CollectProtocolFee<'info> {
     pub mint_b: Account<'info, Mint>,
 
     #[account(mut, seeds = [b"pool_state", mint_a.key().as_ref(), mint_b.key().as_ref(), amm_config.key().as_ref()], bump )]
-    pub pool_state: Account<'info, PoolState>,
+    pub pool_state: Box<Account<'info, PoolState>>,
 
     #[account(mut, associated_token::mint = mint_a, associated_token::authority = pool_state,
         constraint = vault_a.key() == pool_state.vault_a @ ApexFlowError::InvalidVault)]
@@ -648,7 +648,7 @@ pub struct CollectFundFee<'info> {
     pub admin: Signer<'info>,
 
     #[account(constraint = admin.key() == amm_config.admin_key @ ApexFlowError::UnauthorizedAdmin)]
-    pub amm_config: Account<'info, AmmConfig>,
+    pub amm_config: Box<Account<'info, AmmConfig>>,
 
     #[account(constraint = mint_a.key() == pool_state.mint_a @ ApexFlowError::InvalidMint)]
     pub mint_a: Account<'info, Mint>,
@@ -657,7 +657,7 @@ pub struct CollectFundFee<'info> {
     pub mint_b: Account<'info, Mint>,
 
     #[account(mut, seeds = [b"pool_state", mint_a.key().as_ref(), mint_b.key().as_ref(), amm_config.key().as_ref()], bump )]
-    pub pool_state: Account<'info, PoolState>,
+    pub pool_state: Box<Account<'info, PoolState>>,
 
     #[account(mut, associated_token::mint = mint_a, associated_token::authority = pool_state,
         constraint = vault_a.key() == pool_state.vault_a @ ApexFlowError::InvalidVault)]
@@ -687,7 +687,7 @@ pub struct Swap<'info> {
     pub mint_b: Account<'info, Mint>,
 
     #[account(mut, seeds = [b"pool_state", mint_a.key().as_ref(), mint_b.key().as_ref(), amm_config.key().as_ref()], bump )]
-    pub pool_state: Account<'info, PoolState>,
+    pub pool_state: Box<Account<'info, PoolState>>,
     #[account(constraint = amm_config.key() == pool_state.amm_config @ ApexFlowError::InvalidAmmConfigStatus)]
     pub amm_config: Account<'info, AmmConfig>,
 
@@ -714,20 +714,20 @@ pub struct Withdraw<'info> {
     pub user: Signer<'info>,
 
     #[account(constraint = mint_a.key() == pool_state.mint_a @ ApexFlowError::InvalidMint)]
-    pub mint_a: Account<'info, Mint>,
+    pub mint_a: Box<Account<'info, Mint>>,
     #[account(constraint = mint_b.key() == pool_state.mint_b @ ApexFlowError::InvalidMint)]
-    pub mint_b: Account<'info, Mint>,
+    pub mint_b: Box<Account<'info, Mint>>,
 
     #[account(seeds = [b"pool_state", mint_a.key().as_ref(), mint_b.key().as_ref(), amm_config.key().as_ref()], bump )]
-    pub pool_state: Account<'info, PoolState>,
+    pub pool_state: Box<Account<'info, PoolState>>,
     #[account(constraint = amm_config.key() == pool_state.amm_config @ ApexFlowError::InvalidAmmConfigStatus)]
-    pub amm_config: Account<'info, AmmConfig>,
+    pub amm_config: Box<Account<'info, AmmConfig>>,
 
     #[account(mut, associated_token::mint = mint_a, associated_token::authority = user)]
-    pub user_token_account_a: Account<'info, TokenAccount>,
+    pub user_token_account_a: Box<Account<'info, TokenAccount>>,
 
     #[account(mut, associated_token::mint = mint_b, associated_token::authority = user)]
-    pub user_token_account_b: Account<'info, TokenAccount>,
+    pub user_token_account_b: Box<Account<'info, TokenAccount>>,
 
     #[account(mut, associated_token::mint = mint_a, associated_token::authority = pool_state,
         constraint = vault_a.key() == pool_state.vault_a @ ApexFlowError::InvalidVault)]
@@ -738,7 +738,7 @@ pub struct Withdraw<'info> {
     pub vault_b: Account<'info, TokenAccount>,
 
     #[account(mut, mint::authority = pool_state, seeds = [b"lp_mint", pool_state.key().as_ref()], bump )]
-    pub lp_mint: Account<'info, Mint>,
+    pub lp_mint: Box<Account<'info, Mint>>,
 
     #[account(mut, associated_token::mint = lp_mint, associated_token::authority = user)]
     pub user_lp_mint_account: Account<'info, TokenAccount>,
@@ -752,20 +752,20 @@ pub struct Deposit<'info> {
     pub user: Signer<'info>,
 
     #[account(constraint = mint_a.key() == pool_state.mint_a @ ApexFlowError::InvalidMint)]
-    pub mint_a: Account<'info, Mint>,
+    pub mint_a: Box<Account<'info, Mint>>,
     #[account(constraint = mint_b.key() == pool_state.mint_b @ ApexFlowError::InvalidMint)]
-    pub mint_b: Account<'info, Mint>,
+    pub mint_b: Box<Account<'info, Mint>>,
 
     #[account(seeds = [b"pool_state", mint_a.key().as_ref(), mint_b.key().as_ref(), amm_config.key().as_ref()], bump )]
-    pub pool_state: Account<'info, PoolState>,
+    pub pool_state: Box<Account<'info, PoolState>>,
     #[account(constraint = amm_config.key() == pool_state.amm_config @ ApexFlowError::InvalidAmmConfigStatus)]
-    pub amm_config: Account<'info, AmmConfig>,
+    pub amm_config: Box<Account<'info, AmmConfig>>,
 
     #[account(mut, associated_token::mint = mint_a, associated_token::authority = user)]
-    pub user_token_account_a: Account<'info, TokenAccount>,
+    pub user_token_account_a: Box<Account<'info, TokenAccount>>,
 
     #[account(mut, associated_token::mint = mint_b, associated_token::authority = user)]
-    pub user_token_account_b: Account<'info, TokenAccount>,
+    pub user_token_account_b: Box<Account<'info, TokenAccount>>,
 
     #[account(mut, associated_token::mint = mint_a, associated_token::authority = pool_state,
         constraint = vault_a.key() == pool_state.vault_a @ ApexFlowError::InvalidVault)]
@@ -782,6 +782,7 @@ pub struct Deposit<'info> {
     pub user_lp_mint_account: Account<'info, TokenAccount>,
 
     #[account(constraint = dead_address.key() == anchor_lang::solana_program::system_program::ID)]
+    /// CHECK: this is the dead address used to permanently lock minimum liquidity
     pub dead_address: UncheckedAccount<'info>,
 
     #[account(
@@ -834,7 +835,7 @@ pub struct InitializeOperationState<'info> {
     #[account(init, payer = signer, space = 8 + OperationState::INIT_SPACE, seeds = [b"operation_state"], bump )]
     pub operation_state: Account<'info, OperationState>,
 
-    pub apex_flow_account: Program<'info, crate::program::ApexFlow>,
+    pub apex_flow_program: Program<'info, crate::program::ApexFlow>,
 
     #[account(constraint = apex_flow_program_data.upgrade_authority_address == Some(signer.key()) @ ApexFlowError::UnauthorizedAdmin)]
     pub apex_flow_program_data: Account<'info, ProgramData>,
