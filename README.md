@@ -1,102 +1,92 @@
-```markdown
-# ApexFlow — Constant Product AMM
+# 🌊 ApexFlow AMM
 
-A Solana AMM protocol built with Anchor, implementing the constant 
-product invariant (x*y=k) with multiple fee tiers and production-grade
-account architecture.
+**ApexFlow** is a high-performance, non-custodial Automated Market Maker (AMM) built on the Solana blockchain using the Anchor framework. It implements a constant-product invariant ($x \cdot y = k$) with configurable fee tiers, protocol fee collection, and liquidity provider tokens.
 
-> Program ID: `DshyYCvcP7cj1BUhH3VqwfYG8iPie5XzJPB8UGuUsdJD`
-> Status: In development — tests in progress, devnet deployment coming soon
+**[View Deployment on Solana Explorer](https://explorer.solana.com/tx/5CVN7zWGcPiopVXtS6d31zKZGXHX4BrZdHeychjSUb7sG8JU4yavMEFQmqsU1awfSg5znK4GqkXiDFor1ds4mhh?cluster=devnet)**
 
-## Architecture
+---
 
-![Account Flow](images/flow2.png)
+## 🚀 Key Features
 
-ApexFlow follows a layered account hierarchy:
+* **Permissionless Pool Creation**: Launch liquidity pools for any SPL token pair.
+* **Flexible Fee Tiers**: Four distinct tiers (0.1%, 0.25%, 1%, and 4%) to cater to different asset volatilities.
+* **LP Token Dynamics**: Automated minting/burning of LP tokens proportional to pool share.
+* **Admin Controls**: Global "Circuit Breaker" to pause or unpause pools in emergencies.
 
-- **OperationState** — global admin PDA, controls protocol-level permissions
-- **AmmConfig** — per-fee-tier configuration PDA, seeded by fee index
-- **PoolState** — unique per token pair + fee tier, owns all pool assets
-- **Vaults** — SPL token accounts owned by PoolState PDA
-- **LP Mint** — unique per pool, authority is PoolState PDA
+---
 
-This means the same token pair (e.g. USDC/WSOL) can have multiple 
-pools at different fee tiers simultaneously — exactly like Raydium CPMM.
+## 🏗️ Architecture & Account Model
 
-## Fee Tiers
+ApexFlow uses a Program Derived Address (PDA) architecture to ensure security and canonical state management. The diagram below illustrates the relationship between the global state, individual pools, and user wallets.
 
-| Index | Trade Fee |
-|-------|-----------|
-| 0     | 0.1%      |
-| 1     | 0.25%     |
-| 2     | 1%        |
-| 3     | 4%        |
+![Account Model](images/flow2.png)
 
-Each trade fee is split into three components:
-- **LP fee** — stays in vault, accrues to liquidity providers silently
-- **Protocol fee** — 12% of trade fee, collectable by admin
-- **Fund fee** — 4% of trade fee, collectable by admin
+### Core Account Definitions
 
-## Swap Math
+| Account | Seeds | Purpose |
+| --- | --- | --- |
+| **OperationState** | `["operation_state"]` | Singleton PDA storing the global admin key. |
+| **AmmConfig** | `["amm_config", index]` | Stores fee rates for a specific tier. |
+| **PoolState** | `["pool", mint_a, mint_b, config]` | Central state tracking vaults, mints, and fees. |
+| **LpMint** | `["lp_mint", pool_state]` | Mint account for LP tokens, authorized by the pool. |
 
-ApexFlow uses the constant product formula:
+---
 
-```
-amount_out = (y * dx) / (x + dx)
-```
+## 📊 Mathematical Logic
 
-Where `dx` is `amount_in` after fee deduction. All intermediate 
-calculations use `u128` to prevent overflow when multiplying two `u64` 
-reserve values.
+### Swap Invariant
 
-## Security
+Fees are deducted from the input amount before calculating the output to protect the liquidity providers:
 
-- Vault identity verified against PoolState on every instruction
-- Mint ordering enforced (`mint_a < mint_b`) to prevent duplicate pools
-- Minimum liquidity permanently locked to dead address on first deposit
-- Admin authority verified through OperationState PDA
-- `check_context` on every instruction rejects unexpected accounts
-- Pool status flag allows emergency pause
+$$trade\_fee = amount\_in \times \frac{trade\_fee\_rate}{10^9}$$
 
-## Instructions
+$$effective\_in = amount\_in - trade\_fee$$
 
-| Instruction | Description |
-|-------------|-------------|
-| `initialize_operation_state` | Bootstrap global admin state |
-| `initialize_amm_config` | Create fee tier configuration |
-| `initialize_pool` | Create pool for token pair + fee tier |
-| `deposit` | Add liquidity, receive LP tokens |
-| `withdraw` | Burn LP tokens, receive underlying tokens |
-| `swap` | Swap token A for B or B for A |
-| `collect_protocol_fee` | Admin collects protocol fees |
-| `collect_fund_fee` | Admin collects fund fees |
-| `update_pool_status` | Admin pause/unpause pool |
+$$amount\_out = \frac{reserve\_out \times effective\_in}{reserve\_in + effective\_in}$$
 
-## Getting Started
+### Fee Distribution
+
+The protocol collects a portion of every trade fee for ecosystem maintenance:
+
+* **Protocol Cut**: 12% of the trade fee.
+* **Fund Cut**: 4% of the trade fee.
+
+---
+
+## 🛠️ Developer Guide
+
+### Prerequisites
+
+* [Rust](https://rustup.rs/) & [Solana CLI](https://docs.solana.com/cli/install-solana-cli-tools)
+* [Anchor Framework](https://www.anchor-lang.com/docs/installation)
+
+### Build & Test
 
 ```bash
-# Install dependencies
-yarn install
+# Clone the repository
+git clone https://github.com/s1mpleog/apex-flow
 
-# Build
+# Build the program
 anchor build
 
-# Test
-anchor test
+# Run local tests with testing features enabled
+anchor build -- --features local-testing && anchor test --skip-build
 
-# Deploy to devnet
-anchor deploy --provider.cluster devnet
 ```
 
-## Built With
+---
 
-- [Anchor](https://anchor-lang.com) — Solana framework
-- [SPL Token](https://spl.solana.com/token) — Token program
-- Rust
+## 🛡️ Security Considerations
 
-## License
+* **Mint Ordering**: Pools require `mint_a < mint_b` by public key to guarantee a single canonical pool per token pair.
+* **Liquidity Lock**: 100 LP tokens are permanently locked on the first deposit to prevent price manipulation via "empty pool" attacks.
+* **Integer Safety**: All math uses $u128$ intermediate values to prevent overflow before casting back to $u64$.
+* **Context Validation**: Every instruction verifies the program ID and rejects unexpected accounts to prevent account substitution.
 
-MIT
-```
+---
+
+**Program ID:** `DshyYCvcP7cj1BUhH3VqwfYG8iPie5XzJPB8UGuUsdJD`
+
+**IDL Account:** `HENRZtYPLHNpV23kJ8UBjLk1WbufnQLHZKsGHn2nVC98`
 
 ---

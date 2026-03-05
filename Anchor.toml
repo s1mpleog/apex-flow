@@ -12,7 +12,7 @@ apex_flow = "DshyYCvcP7cj1BUhH3VqwfYG8iPie5XzJPB8UGuUsdJD"
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "localnet"
+cluster = "devnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]

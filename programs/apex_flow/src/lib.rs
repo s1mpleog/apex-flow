@@ -341,12 +341,7 @@ pub mod apex_flow {
         Ok(())
     }
 
-    pub fn swap(
-        ctx: Context<Swap>,
-        amount_in: u64,
-        min_amount_out: u64,
-        b_to_a: bool,
-    ) -> Result<()> {
+    pub fn swap(ctx: Context<Swap>, amount_in: u64, min_amount_out: u64) -> Result<()> {
         check_context(&ctx)?;
         require!(
             ctx.accounts.pool_state.status,
@@ -354,32 +349,18 @@ pub mod apex_flow {
         );
         require!(amount_in > 0, ApexFlowError::ExceededMaximumInputAmount);
 
-        let input_vault: &Account<'_, TokenAccount>;
-        let output_vault: &Account<'_, TokenAccount>;
-
-        if b_to_a {
-            input_vault = &ctx.accounts.vault_b;
-            output_vault = &ctx.accounts.vault_a;
-        } else {
-            input_vault = &ctx.accounts.vault_a;
-            output_vault = &ctx.accounts.vault_b;
-        }
-
         let trade_fee = (amount_in as u128 * ctx.accounts.amm_config.trade_fee_rate as u128)
             / FEE_RATE_DENOMINATOR;
-
         let trade_fee_u64 = to_u64(trade_fee)?;
-
         let amount_in_effective = amount_in - trade_fee_u64;
 
         let protocol_fee =
             (trade_fee * ctx.accounts.amm_config.protocol_fee_rate as u128) / FEE_RATE_DENOMINATOR;
-
         let fund_fee =
             (trade_fee * ctx.accounts.amm_config.fund_fee_rate as u128) / FEE_RATE_DENOMINATOR;
 
-        let amount_out = (output_vault.amount as u128 * amount_in_effective as u128)
-            / (input_vault.amount as u128 + amount_in_effective as u128);
+        let amount_out = (ctx.accounts.vault_b.amount as u128 * amount_in_effective as u128)
+            / (ctx.accounts.vault_a.amount as u128 + amount_in_effective as u128);
 
         let amount_out_u64 = to_u64(amount_out)?;
         let protocol_fee_u64 = to_u64(protocol_fee)?;
@@ -390,40 +371,23 @@ pub mod apex_flow {
             ApexFlowError::ExceededSlippageTolerance
         );
 
-        let input_mint: &Account<'_, Mint>;
-        let output_mint: &Account<'_, Mint>;
-
-        if b_to_a {
-            input_mint = &ctx.accounts.mint_b;
-            output_mint = &ctx.accounts.mint_a;
-        } else {
-            input_mint = &ctx.accounts.mint_a;
-            output_mint = &ctx.accounts.mint_b;
-        }
+        ctx.accounts.pool_state.protocol_fees_a += protocol_fee_u64;
+        ctx.accounts.pool_state.fund_fees_a += fund_fee_u64;
 
         let mint_a_key = ctx.accounts.mint_a.key();
         let mint_b_key = ctx.accounts.mint_b.key();
         let amm_cfg_key = ctx.accounts.amm_config.key();
 
-        if b_to_a {
-            ctx.accounts.pool_state.protocol_fees_b += protocol_fee_u64;
-            ctx.accounts.pool_state.fund_fees_b += fund_fee_u64;
-        } else {
-            ctx.accounts.pool_state.protocol_fees_a += protocol_fee_u64;
-            ctx.accounts.pool_state.fund_fees_a += fund_fee_u64;
-        }
-
         let cpi_context = CpiContext::new(
             ctx.accounts.token_program.to_account_info(),
             TransferChecked {
                 from: ctx.accounts.input_token_account.to_account_info(),
-                to: input_vault.to_account_info(),
-                mint: input_mint.to_account_info(),
+                to: ctx.accounts.vault_a.to_account_info(),
+                mint: ctx.accounts.mint_a.to_account_info(),
                 authority: ctx.accounts.user.to_account_info(),
             },
         );
-
-        transfer_checked(cpi_context, amount_in, input_mint.decimals)?;
+        transfer_checked(cpi_context, amount_in, ctx.accounts.mint_a.decimals)?;
 
         let seeds = [
             b"pool_state",
@@ -432,21 +396,19 @@ pub mod apex_flow {
             amm_cfg_key.as_ref(),
             &[ctx.accounts.pool_state.pool_bump],
         ];
-
         let signer_seeds = &[&seeds[..]];
 
         let cpi_context = CpiContext::new_with_signer(
             ctx.accounts.token_program.to_account_info(),
             TransferChecked {
-                from: output_vault.to_account_info(),
+                from: ctx.accounts.vault_b.to_account_info(),
                 to: ctx.accounts.output_token_account.to_account_info(),
-                mint: output_mint.to_account_info(),
+                mint: ctx.accounts.mint_b.to_account_info(),
                 authority: ctx.accounts.pool_state.to_account_info(),
             },
             signer_seeds,
         );
-
-        transfer_checked(cpi_context, amount_out_u64, output_mint.decimals)?;
+        transfer_checked(cpi_context, amount_out_u64, ctx.accounts.mint_b.decimals)?;
 
         Ok(())
     }
